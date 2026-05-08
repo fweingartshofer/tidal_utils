@@ -1,7 +1,24 @@
+import lustre/attribute
+import lustre/element/html
+
 pub fn render() {
-  "
-<header class='nav'>
-  <style>
+  html.header([attribute.class("nav")], [
+    style(),
+    html.div([attribute.class("nav-inner")], [
+      html.nav([attribute.class("nav-brand")], [
+        html.a([attribute.href("/")], [html.text("Tidal Utils")]),
+      ]),
+      html.nav([attribute.class("nav-menu")], [
+        html.a([attribute.href("/")], [html.text("Home")]),
+      ]),
+    ]),
+  ])
+}
+
+fn style() {
+  html.style(
+    [],
+    "
     .nav-inner {
       display: flex;
       flex-direction: column;
@@ -25,13 +42,6 @@ pub fn render() {
         flex-direction: row;
       }
     }
-  </style>
-  <div class='nav-inner'>
-    <div class='nav-brand'><a href='/'>Tidal Utils</a></div>
-
-    <nav class='nav-menu'>
-      <a href='/'>Home</a>
-    </nav>
-  </div>
-</header>"
+    ",
+  )
 }

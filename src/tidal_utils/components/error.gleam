@@ -1,6 +1,10 @@
-import dream/http/response
+import lustre/element
+import lustre/element/html
 
-pub fn render(code: Int, message: String) -> response.Response {
-  { "<h1>An Error ocurred</h1><br/>" <> message }
-  |> response.html_response(code, _)
+pub fn render(message: String) {
+  element.fragment([
+    html.h1([], [html.text("An error ocurred")]),
+    html.br([]),
+    html.text(message),
+  ])
 }

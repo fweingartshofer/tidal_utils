@@ -19,9 +19,37 @@ pub type JsonApiResponse(included, attributes) {
   )
 }
 
+pub fn extract_data(
+  json_api_response: JsonApiResponse(included, attributes),
+) -> Option(Data(attributes)) {
+  case json_api_response {
+    SuccessResponse(
+      meta: _,
+      jsonapi: _,
+      links: _,
+      included: _,
+      data: Some(data),
+    ) -> Some(data)
+    _ -> None
+  }
+}
+
+pub fn extract_included(json_api_response) {
+  case json_api_response {
+    SuccessResponse(
+      meta: _,
+      jsonapi: _,
+      links: _,
+      included: Some(included),
+      data: _,
+    ) -> Some(included)
+    _ -> None
+  }
+}
+
 pub fn json_api_response_decoder(
-  included_decoder: Decoder(included),
-  attributes_decoder: Decoder(attributes),
+  included included_decoder: Decoder(included),
+  attribute attributes_decoder: Decoder(attributes),
 ) -> Decoder(JsonApiResponse(included, attributes)) {
   use jsonapi <- decode.optional_field(
     "jsonapi",
@@ -128,10 +156,11 @@ fn resource_object_decoder(
 ) -> Decoder(ResourceObject(attributes)) {
   use id <- decode.field("id", decode.optional(decode.string))
   use type_ <- decode.field("type", decode.string)
-  use attributes: attributes <- decode.field("attributes", attribute_decoder)
+  use attributes <- decode.field("attributes", attribute_decoder)
   let attributes = Some(attributes)
-  use relationships <- decode.field(
+  use relationships <- decode.optional_field(
     "relationships",
+    None,
     decode.optional(decode.dict(decode.string, relationship_object_decoder())),
   )
   use links <- links_field_decoder()

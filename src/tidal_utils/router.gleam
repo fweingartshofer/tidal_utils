@@ -1,6 +1,5 @@
 import dream/http/request.{Get}
 import dream/router.{route, router}
-import tidal_utils/middlewares/layout_middleware
 import tidal_utils/middlewares/logging_middleware
 import tidal_utils/middlewares/session_id_middleware
 import tidal_utils/middlewares/tidal_auth_middleware
@@ -14,7 +13,6 @@ pub fn create_router() -> router.Router(TidalAuthContext, services.Services) {
   |> route(method: Get, path: "/", controller: home.render, middleware: [
     session_id_middleware.handle,
     tidal_auth_middleware.handle,
-    layout_middleware.after_handler,
     logging_middleware.handle,
   ])
   |> route(
@@ -24,7 +22,6 @@ pub fn create_router() -> router.Router(TidalAuthContext, services.Services) {
     middleware: [
       session_id_middleware.handle,
       tidal_auth_middleware.handle,
-      layout_middleware.after_handler,
       logging_middleware.handle,
     ],
   )
