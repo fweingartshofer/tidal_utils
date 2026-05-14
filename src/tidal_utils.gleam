@@ -7,7 +7,7 @@ import tidal_utils/tidal_auth_context
 import woof
 
 pub fn main() -> Nil {
-  woof.set_level(woof.Info)
+  woof.set_level(woof.Debug)
   case services.new() {
     Ok(res) -> {
       server.new()

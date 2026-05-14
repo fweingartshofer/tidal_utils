@@ -46,7 +46,9 @@ pub fn retrieve_playlists(access_token: String) -> Result(List(Playlist), Nil) {
   }
 }
 
-pub fn retrieve_self(access_token: String) -> Result(tidal_types.User, Nil) {
+pub fn retrieve_self(
+  access_token: String,
+) -> Result(tidal_types.WithIdentifier(tidal_types.User), Nil) {
   let assert Ok(req) =
     uri.parse(user_self_endpoint) |> result.try(request.from_uri)
 
@@ -63,13 +65,13 @@ pub fn retrieve_self(access_token: String) -> Result(tidal_types.User, Nil) {
   use payload <- result.try(body)
   case payload |> json_api.extract_data() {
     Some(json_api.One(json_api.ResourceObject(
-      id: _,
+      id: Some(id),
       lid: _,
       type_: _,
       attributes: Some(self),
       relationships: _,
       links: _,
-    ))) -> Ok(self)
+    ))) -> Ok(tidal_types.WithIdentifier(id, self))
     _ -> Error(Nil)
   }
 }

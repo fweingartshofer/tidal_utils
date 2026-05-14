@@ -1,6 +1,6 @@
 import dream/http.{type Request, type Response}
 import gleam/option
-import tidal_utils/model.{type Tokens}
+import tidal_utils/model.{type TidalConnection}
 import tidal_utils/operations/refresh_token.{
   type RefreshError, CouldNotRefreshTokensError, NoRefreshTokenGivenError,
   TokensNotFound,
@@ -15,35 +15,36 @@ pub fn handle(
   services: Services,
   next: fn(Request, TidalAuthContext, Services) -> Response,
 ) -> Response {
-  let tokens =
+  let user =
     refresh_token.execute(services, context.session_id)
     |> log(context)
   let new_ctx =
     TidalAuthContext(
       ..context,
-      access_token: tokens
+      access_token: user
         |> option.from_result()
-        |> option.map(fn(x) { x.access_token }),
+        |> option.map(fn(x) { x.access_token })
+        |> option.flatten(),
     )
   next(request, new_ctx, services)
 }
 
 fn log(
-  tokens: Result(Tokens, RefreshError),
+  tokens: Result(TidalConnection, RefreshError),
   context: TidalAuthContext,
-) -> Result(Tokens, RefreshError) {
+) -> Result(TidalConnection, RefreshError) {
   let ctx = [#("session_id", context.session_id)]
   case tokens {
     Ok(_) -> woof.debug("Successfully retrieved tokens", ctx)
     Error(NoRefreshTokenGivenError) ->
-      woof.error(
-        "Could not retrieve not new access token, since no refresh token was given",
+      woof.info(
+        "Could not retrieve new access token, since no refresh token was given",
         ctx,
       )
     Error(CouldNotRefreshTokensError) ->
       woof.error("Could not retrieve a new access token", ctx)
     Error(TokensNotFound) ->
-      woof.error(
+      woof.info(
         "Could not find any tokens associated with given session_id",
         ctx,
       )

@@ -1,6 +1,14 @@
 import gleam/dynamic/decode
 import gleam/option.{type Option, None}
 
+pub type WithIdentifier(a) {
+  WithIdentifier(id: String, payload: a)
+}
+
+pub fn get_payload(identifiable: WithIdentifier(a)) {
+  identifiable.payload
+}
+
 pub type Playlist {
   Playlist(name: String)
 }
@@ -10,10 +18,6 @@ pub fn playlist_decoder() -> decode.Decoder(Playlist) {
   decode.success(Playlist(name:))
 }
 
-///      "username": "florian@flwr.dev",
-///      "country": "AT",
-///      "email": "florian@flwr.dev",
-///      "emailVerified": true
 pub type User {
   User(
     country: String,

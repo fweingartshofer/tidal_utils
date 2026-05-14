@@ -2,6 +2,7 @@ import dream/http.{type Request, type Response}
 import dream/http/response
 import dream/http/status
 import gleam/option
+import gleam/result
 import lustre/element
 import tidal_utils/components/error
 import tidal_utils/components/greeting
@@ -11,6 +12,7 @@ import tidal_utils/components/playlists
 import tidal_utils/operations/create_redirect_uri
 import tidal_utils/services.{type Services}
 import tidal_utils/services/client
+import tidal_utils/services/tidal_types
 import tidal_utils/tidal_auth_context.{type TidalAuthContext}
 
 pub fn render(
@@ -37,7 +39,9 @@ fn render_authenticated(access_token) {
 
 fn render_success(playlists, self) {
   element.fragment([
-    greeting.render(self |> option.from_result()),
+    greeting.render(
+      self |> result.map(tidal_types.get_payload) |> option.from_result(),
+    ),
     playlists.render(playlists),
   ])
 }

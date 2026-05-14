@@ -6,19 +6,17 @@ import flwr_oauth2/authorization_grant.{type State, Code, S256, State} as auth_g
 import flwr_oauth2/pkce.{type Verifier, Verifier}
 import gleam/dynamic
 import gleam/dynamic/decode
-import gleam/option
+import gleam/option.{Some}
 import gleam/result
 import gleam/uri
 import tidal_utils/config as tidal_config
-import tidal_utils/model.{type Tokens}
+import tidal_utils/model.{TidalConnection}
+import tidal_utils/persistence/db
 import woof
+import youid/uuid
 
 pub type Services {
-  Services(
-    oauth_cache: Table(State, Verifier),
-    tidal_cache: Table(String, Tokens),
-    config: tidal_config.Config,
-  )
+  Services(oauth_cache: Table(State, Verifier), config: tidal_config.Config)
 }
 
 pub fn new() -> Result(Services, Nil) {
@@ -30,14 +28,8 @@ pub fn new() -> Result(Services, Nil) {
     |> config.create()
     |> result.replace_error(Nil),
   )
-  use tidal_cache <- result.try(
-    config.new("tidal_cache")
-    |> config.key(dynamic.string, decode.string)
-    |> config.value(model.tokens_encoder, model.tokens_decoder())
-    |> config.create()
-    |> result.replace_error(Nil),
-  )
-  Ok(Services(oauth_cache, tidal_cache, config))
+  let assert Ok(_) = config |> db.initialize_db()
+  Ok(Services(oauth_cache, config))
 }
 
 pub fn create_redirect_uri(services: Services) {
@@ -58,7 +50,7 @@ pub fn create_redirect_uri(services: Services) {
       |> auth_grant.set_code_challenge(challenge.value, S256)
       |> auth_grant.make_redirect_uri()
       |> uri.to_string()
-      |> option.Some
+      |> Some
     _ -> option.None
   }
 }
@@ -72,7 +64,10 @@ pub fn insert_state_and_verifier(
   |> operations.insert_new(state, verifier)
 }
 
-pub fn get_verifier(services: Services, state: State) -> option.Option(Verifier) {
+pub fn get_verifier(
+  services: Services,
+  state: State,
+) -> option.Option(Verifier) {
   let verifier = services.oauth_cache |> operations.get(state)
   case verifier {
     Ok(verifier) -> verifier
@@ -97,28 +92,33 @@ pub fn remove_verifier(services: Services, state: State) {
   }
 }
 
-pub fn insert_tokens(
+pub fn upsert_user(
   services: Services,
   session_id: String,
   tokens: AccessTokenResponse,
 ) {
-  services.tidal_cache
-  |> operations.insert_new(
-    session_id,
-    tokens |> model.from_access_token_response(),
-  )
-}
-
-pub fn get_tokens(services: Services, session_id: String) {
-  let tokens = services.tidal_cache |> operations.get(session_id)
-  case tokens {
-    Ok(tokens) -> tokens
-    Error(_err) -> {
-      woof.warning("Got an error when trying to access table for tidal_auths", [
-        #("session_id", session_id),
-      ])
-      option.None
-    }
+  woof.info("Received access token and refresh token", [
+    #("session_id", session_id),
+    #("Access Token", tokens.access_token),
+    #("Refresh Token", tokens.refresh_token |> option.unwrap("")),
+  ])
+  let payload = tokens.access_token |> model.decode_token()
+  use payload <- result.try(payload)
+  woof.debug("Inserting user with tokens", [#("session_id", session_id)])
+  let tidal_connection =
+    TidalConnection(
+      id: uuid.v7(),
+      tidal_id: payload.uid,
+      refresh_token: tokens.refresh_token,
+      access_token: Some(tokens.access_token),
+      session_id: Some(session_id),
+    )
+  let inserted =
+    services.config
+    |> db.upsert_user_by_tidal_id(tidal_connection, _)
+  case inserted {
+    False -> Error(Nil)
+    True -> Ok(tidal_connection)
   }
 }
 

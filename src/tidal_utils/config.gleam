@@ -13,6 +13,7 @@ pub type Config {
     authorization_uri: uri.Uri,
     token_uri: uri.Uri,
     scope: flwr_oauth2.Scope,
+    database_url: String,
   )
 }
 
@@ -32,16 +33,17 @@ pub fn create() -> Result(Config, Nil) {
   let assert Ok(authorization_uri) =
     uri.parse("https://login.tidal.com/authorize")
   let assert Ok(token_uri) = uri.parse("https://auth.tidal.com/v1/oauth2/token")
-  Ok(
-    Config(
-      client_id:,
-      secret: client_secret,
-      redirect_uri:,
-      authorization_uri:,
-      token_uri:,
-      scope: ["playlists.read", "collection.read", "user.read"],
-    ),
-  )
+  use database_url <- result.try(env("DATABASE_URL"))
+
+  Ok(Config(
+    client_id:,
+    secret: client_secret,
+    redirect_uri:,
+    authorization_uri:,
+    token_uri:,
+    scope: ["playlists.read", "collection.read", "user.read"],
+    database_url:,
+  ))
 }
 
 fn env(name: String) -> Result(String, Nil) {

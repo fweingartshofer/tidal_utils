@@ -3,7 +3,7 @@ import dream/http/response
 import dream/http/status
 import tidal_utils/components/error
 import tidal_utils/components/layout
-import tidal_utils/operations/fetch_tokens
+import tidal_utils/operations/login_user
 import tidal_utils/services
 import tidal_utils/tidal_auth_context.{type TidalAuthContext}
 import woof
@@ -14,7 +14,7 @@ pub fn render(
   services: services.Services,
 ) -> Response {
   woof.info("Request query", [#("Query", req.query)])
-  case fetch_tokens.execute(req, services, context.session_id) {
+  case login_user.execute(req, services, context.session_id) {
     Ok(_) -> response.redirect_response(status.temporary_redirect, "/")
     Error(_) ->
       error.render("Could not log you in")

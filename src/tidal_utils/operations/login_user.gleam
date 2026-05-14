@@ -1,6 +1,7 @@
 import dream/http.{type Request}
 import flwr_oauth2.{type AccessTokenResponse}
 import flwr_oauth2/authorization_grant.{type AuthorizationResponse}
+import flwr_oauth2/pkce
 import gleam/dict
 import gleam/httpc
 import gleam/option
@@ -45,7 +46,10 @@ fn parse_callback(
   |> result.replace_error(InvalidCallbackRequest)
 }
 
-fn get_verifier(resp: AuthorizationResponse, services) {
+fn get_verifier(
+  resp: AuthorizationResponse,
+  services: Services,
+) -> option.Option(pkce.Verifier) {
   let verifier =
     resp.state
     |> option.map(services.get_verifier(services, _))
@@ -138,7 +142,7 @@ fn store_tokens(
   session_id: String,
 ) {
   services
-  |> services.insert_tokens(session_id, response)
+  |> services.upsert_user(session_id, response)
   |> result.replace_error(InternalError)
   |> result.replace(Nil)
 }

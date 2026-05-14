@@ -1,59 +1,42 @@
-import flwr_oauth2
-import gleam/dynamic
 import gleam/dynamic/decode
-import gleam/float
+import gleam/int
 import gleam/option
-import gleam/time/duration
-import gleam/time/timestamp.{type Timestamp}
+import gleam/order
+import gleam/result
+import gleam/time/timestamp
+import youid/uuid
+import ywt
 
-pub type Tokens {
-  Tokens(
-    access_token: String,
+pub type TokenPayload {
+  TokenPayload(uid: String, exp: timestamp.Timestamp)
+}
+
+pub fn decode_token(jwt: String) -> Result(TokenPayload, Nil) {
+  let payload =
+    jwt
+    |> ywt.decode_unsafely_without_validation(tokens_payload_decoder())
+  use payload <- result.try(payload)
+  case timestamp.compare(timestamp.system_time(), payload.exp) {
+    order.Lt -> Ok(payload)
+    _ -> Error(Nil)
+  }
+}
+
+fn tokens_payload_decoder() {
+  use uid <- decode.field("uid", decode.int)
+  use exp <- decode.field("exp", decode.int)
+  decode.success(TokenPayload(
+    uid |> int.to_string(),
+    exp |> timestamp.from_unix_seconds(),
+  ))
+}
+
+pub type TidalConnection {
+  TidalConnection(
+    id: uuid.Uuid,
+    tidal_id: String,
     refresh_token: option.Option(String),
-    expires_at: option.Option(Timestamp),
+    access_token: option.Option(String),
+    session_id: option.Option(String),
   )
-}
-
-pub fn tokens_decoder() -> decode.Decoder(Tokens) {
-  use access_token <- decode.field("access_token", decode.string)
-  use refresh_token <- decode.field(
-    "refresh_token",
-    decode.optional(decode.string),
-  )
-  use expires_at <- decode.field("expires_at", decode.optional(decode.int))
-  let expires_at = expires_at |> option.map(timestamp.from_unix_seconds)
-  decode.success(Tokens(access_token:, refresh_token:, expires_at:))
-}
-
-pub fn from_access_token_response(response: flwr_oauth2.AccessTokenResponse) {
-  let now = timestamp.system_time()
-  let expires_at =
-    response.expires_in
-    |> option.map(duration.seconds)
-    |> option.map(timestamp.add(now, _))
-  Tokens(
-    access_token: response.access_token,
-    refresh_token: response.refresh_token,
-    expires_at:,
-  )
-}
-
-pub fn tokens_encoder(tokens: Tokens) -> dynamic.Dynamic {
-  dynamic.properties([
-    #(dynamic.string("access_token"), dynamic.string(tokens.access_token)),
-    #(
-      dynamic.string("refresh_token"),
-      tokens.refresh_token
-        |> option.map(dynamic.string)
-        |> option.lazy_unwrap(dynamic.nil),
-    ),
-    #(
-      dynamic.string("expires_at"),
-      tokens.expires_at
-        |> option.map(timestamp.to_unix_seconds)
-        |> option.map(float.truncate)
-        |> option.map(dynamic.int)
-        |> option.lazy_unwrap(dynamic.nil),
-    ),
-  ])
 }
